@@ -64,13 +64,13 @@
             this.About,
             this.Exit});
             this.contextMenuStrip1.Name = "contextMenuStrip1";
-            this.contextMenuStrip1.Size = new System.Drawing.Size(202, 92);
+            this.contextMenuStrip1.Size = new System.Drawing.Size(247, 114);
             // 
             // Speakers
             // 
             this.Speakers.CheckOnClick = true;
             this.Speakers.Name = "Speakers";
-            this.Speakers.Size = new System.Drawing.Size(201, 22);
+            this.Speakers.Size = new System.Drawing.Size(246, 22);
             this.Speakers.Text = "Speakers + Headphones";
             this.Speakers.Click += new System.EventHandler(this.Speakers_Click);
             // 
@@ -78,21 +78,21 @@
             // 
             this.Headphones.CheckOnClick = true;
             this.Headphones.Name = "Headphones";
-            this.Headphones.Size = new System.Drawing.Size(201, 22);
-            this.Headphones.Text = "Headphones";
+            this.Headphones.Size = new System.Drawing.Size(246, 22);
+            this.Headphones.Text = "Headphones (AutoDetect Mode)";
             this.Headphones.Click += new System.EventHandler(this.Headphones_Click);
             // 
             // About
             // 
             this.About.Name = "About";
-            this.About.Size = new System.Drawing.Size(201, 22);
+            this.About.Size = new System.Drawing.Size(246, 22);
             this.About.Text = "About";
             this.About.Click += new System.EventHandler(this.About_Click);
             // 
             // Exit
             // 
             this.Exit.Name = "Exit";
-            this.Exit.Size = new System.Drawing.Size(201, 22);
+            this.Exit.Size = new System.Drawing.Size(246, 22);
             this.Exit.Text = "Exit";
             this.Exit.Click += new System.EventHandler(this.toolStripMenuItem2_Click);
             // 

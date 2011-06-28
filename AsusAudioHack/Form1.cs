@@ -15,14 +15,17 @@ namespace AsusAudioHack
     {
         private bool bExitClicked = false;
 
-        private string registryPathStr;
-        private string audioGuidStr;
-        private string instancePathStr;
-        private string registryKeyStr;
+        private static string NOTFOUND = "not found";
+        private string registryPathStr = NOTFOUND;
+        private string audioGuidStr = NOTFOUND;
+        private string instancePathStr = NOTFOUND;
+        private string registryKeyStr = NOTFOUND;
 
         public Form1()
         {
             InitializeComponent();
+            lblRegistryPath.Text = NOTFOUND;
+            lblDeviceName.Text = NOTFOUND;                        
             this.label5.Text = 
                 "Asus Audio Hack\n\n" + 
                 "This system tray application allows you to " +
@@ -92,46 +95,72 @@ namespace AsusAudioHack
 
         private void enableHeadphonesMode()
         {
-            this.notifyIcon1.BalloonTipText = "Please wait for audio device to restart.";
-            this.notifyIcon1.BalloonTipIcon = ToolTipIcon.Info;
-            this.notifyIcon1.ShowBalloonTip(1); 
-            RegistryKey hklm = Registry.LocalMachine;
-            RegistryKey audioKey = hklm.OpenSubKey(registryPathStr, RegistryKeyPermissionCheck.ReadWriteSubTree);
-            byte[] value = {00};
-            audioKey.SetValue(registryKeyStr, value);
-            audioKey.Close();
-            EnableAudio(false);
-            EnableAudio(true);
+            if (!registryPathStr.Equals(NOTFOUND))
+            {
+                this.notifyIcon1.BalloonTipText = "Please wait for audio device to restart.";
+                this.notifyIcon1.BalloonTipIcon = ToolTipIcon.Info;
+                this.notifyIcon1.ShowBalloonTip(1);
+                RegistryKey hklm = Registry.LocalMachine;
+                RegistryKey audioKey = hklm.OpenSubKey(registryPathStr, RegistryKeyPermissionCheck.ReadWriteSubTree);
+                byte[] value = { 00 };
+                audioKey.SetValue(registryKeyStr, value);
+                audioKey.Close();
+                try
+                {
+                    EnableAudio(false);
+                    EnableAudio(true);
+                }
+                catch (Exception e)
+                {
+                    this.notifyIcon1.BalloonTipText = "Device failed to restart: " + e.Message;
+                    this.notifyIcon1.ShowBalloonTip(1);
+                }
+            }
         }
 
         private void enableSpeakersMode()
         {
-            this.notifyIcon1.BalloonTipText = "Please wait for audio device to restart.";
-            this.notifyIcon1.BalloonTipIcon = ToolTipIcon.Info;
-            this.notifyIcon1.ShowBalloonTip(1);
-            RegistryKey hklm = Registry.LocalMachine;
-            RegistryKey audioKey = hklm.OpenSubKey(registryPathStr, RegistryKeyPermissionCheck.ReadWriteSubTree);
-            byte[] value = { 255 };
-            audioKey.SetValue(registryKeyStr, value);
-            audioKey.Close();
-            EnableAudio(false);
-            EnableAudio(true);
+            if (!registryPathStr.Equals(NOTFOUND))
+            {
+                this.notifyIcon1.BalloonTipText = "Please wait for audio device to restart.";
+                this.notifyIcon1.BalloonTipIcon = ToolTipIcon.Info;
+                this.notifyIcon1.ShowBalloonTip(1);
+                RegistryKey hklm = Registry.LocalMachine;
+                RegistryKey audioKey = hklm.OpenSubKey(registryPathStr, RegistryKeyPermissionCheck.ReadWriteSubTree);
+                byte[] value = { 255 };
+                audioKey.SetValue(registryKeyStr, value);
+                audioKey.Close();
+                try
+                {
+                    EnableAudio(false);
+                    EnableAudio(true);
+                }
+                catch (Exception e)
+                {
+                    this.notifyIcon1.BalloonTipText = "Device failed to restart: " + e.Message;
+                    this.notifyIcon1.ShowBalloonTip(1);
+                }
+
+            }
         }
 
         private void getCurrentAudioMode()
         {
-            RegistryKey hklm = Registry.LocalMachine;
-            RegistryKey audioKey = hklm.OpenSubKey(registryPathStr, RegistryKeyPermissionCheck.ReadWriteSubTree);
-            byte[] value = (byte[]) audioKey.GetValue(registryKeyStr);
-            if(value[0] == 0) 
+            if (!registryPathStr.Equals(NOTFOUND))
             {
-                this.Headphones.Checked = true;
-                this.Speakers.Checked = false;
-            }
-            else if(value[0] == 255)
-            {
-                this.Headphones.Checked = false;
-                this.Speakers.Checked = true;
+                RegistryKey hklm = Registry.LocalMachine;
+                RegistryKey audioKey = hklm.OpenSubKey(registryPathStr, RegistryKeyPermissionCheck.ReadWriteSubTree);
+                byte[] value = (byte[])audioKey.GetValue(registryKeyStr);
+                if (value[0] == 0)
+                {
+                    this.Headphones.Checked = true;
+                    this.Speakers.Checked = false;
+                }
+                else if (value[0] == 255)
+                {
+                    this.Headphones.Checked = false;
+                    this.Speakers.Checked = true;
+                }
             }
         }
 
@@ -149,17 +178,88 @@ namespace AsusAudioHack
 
         private void findAudioDevice()
         {
-            registryPathStr = "SYSTEM\\CurrentControlSet\\Control\\Class\\{4D36E96C-E325-11CE-BFC1-08002BE10318}\\0000\\Settings";
-            registryKeyStr = "ForceDisableJD";
+            bool bFound = false;
             audioGuidStr = "{4D36E96C-E325-11CE-BFC1-08002BE10318}";
-            instancePathStr = @"HDAUDIO\FUNC_01&VEN_10EC&DEV_0663&SUBSYS_104319A3&REV_1000\4&10014B3F&0&0001";
+            registryKeyStr = "ForceDisableJD";
+
+            try
+            {
+                string[] searchVals = { "Realtek High Definition Audio" };
+                foreach (string searchVal in searchVals)
+                {
+
+                    RegistryKey hklm = Registry.LocalMachine;
+                    RegistryKey deviceKey = hklm.OpenSubKey("SYSTEM\\CurrentControlSet\\Control\\Class\\" + audioGuidStr);
+                    string[] deviceSubKeys = deviceKey.GetSubKeyNames();
+
+                    foreach (string deviceStr in deviceSubKeys)
+                    {
+                        RegistryKey checkValKey = deviceKey.OpenSubKey(deviceStr);
+                        string checkVal = (string)checkValKey.GetValue("DriverDesc");
+                        if (checkVal.ToLower().Equals(searchVal.ToLower()))
+                        {
+                            RegistryKey audioKey = checkValKey.OpenSubKey("Settings");
+                            if (audioKey != null)
+                            {
+                                RegistryValueKind regValKind = audioKey.GetValueKind(registryKeyStr);
+                                if (regValKind == RegistryValueKind.Binary)
+                                {
+                                    instancePathStr = findInstancePath(searchVal);
+                                    if (instancePathStr != null)
+                                    {
+                                        registryPathStr = "SYSTEM\\CurrentControlSet\\Control\\Class\\" + audioGuidStr + "\\" + deviceStr + "\\Settings";
+                                        lblRegistryPath.Text = "HKLM\\" + registryPathStr + "\\" + registryKeyStr;
+                                        lblDeviceName.Text = searchVal;
+                                        bFound = true;
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    if (bFound) break;
+                }
+            }
+            catch (Exception e)
+            {
+                Console.Out.WriteLine(e.Message);
+               //do nothing
+            }
 
             lblDeviceGuid.Text = audioGuidStr;
             lblDeviceInstance.Text = instancePathStr;
-            lblRegistryPath.Text = "HKLM\\" + registryPathStr + "\\" + registryKeyStr;
-            lblDeviceName.Text = "Realtek High Definition Audio";
 
             getCurrentAudioMode();
+        }
+
+        private string findInstancePath(string deviceDesc)
+        {
+            string instancePathStr = null;
+
+            RegistryKey hklm = Registry.LocalMachine;
+            RegistryKey hdaudioKey = hklm.OpenSubKey("SYSTEM\\CurrentControlSet\\Enum\\HDAUDIO");
+            string[] audioDevStrs = hdaudioKey.GetSubKeyNames();
+            foreach (string audioDevStr in audioDevStrs)
+            {
+                RegistryKey hdaudioInstanceKey = hdaudioKey.OpenSubKey(audioDevStr);
+                string[] audioSubDevStrs = hdaudioInstanceKey.GetSubKeyNames();
+                foreach (string audioSubDevStr in audioSubDevStrs)
+                {
+                    RegistryKey hdaudioSubKey = hdaudioInstanceKey.OpenSubKey(audioSubDevStr);
+                    string searchDeviceDesc = (string) hdaudioSubKey.GetValue("DeviceDesc");
+                    if (searchDeviceDesc.Equals(deviceDesc))
+                    {
+                        instancePathStr = @"HDAUDIO\" + audioDevStr.ToUpper() + @"\" + audioSubDevStr.ToUpper();
+                        //instancePathStr = @"HDAUDIO\FUNC_01&VEN_10EC&DEV_0663&SUBSYS_104319A3&REV_1000\4&10014B3F&0&0001";
+                        return instancePathStr;
+                    }
+                }
+
+            }
+
+
+
+            return instancePathStr;
         }
 
         private void Form1_Shown(object sender, EventArgs e)
