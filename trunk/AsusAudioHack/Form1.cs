@@ -27,7 +27,7 @@ namespace AsusAudioHack
             lblRegistryPath.Text = NOTFOUND;
             lblDeviceName.Text = NOTFOUND;                        
             this.label5.Text = 
-                "Asus Audio Hack\n\n" + 
+                "Asus Audio Hack v1.0.1\n\n" + 
                 "This system tray application allows you to " +
                 "change the registry setting for the realtek " +
                 "audio card in Asus G50/G60 laptops to get around\n" + 
@@ -179,40 +179,42 @@ namespace AsusAudioHack
         private void findAudioDevice()
         {
             bool bFound = false;
-            audioGuidStr = "{4D36E96C-E325-11CE-BFC1-08002BE10318}";
             registryKeyStr = "ForceDisableJD";
 
             try
             {
-                string[] searchVals = { "Realtek High Definition Audio" };
+                string[] searchVals = { "{4D36E96C-E325-11CE-BFC1-08002BE10318}" };
                 foreach (string searchVal in searchVals)
                 {
 
                     RegistryKey hklm = Registry.LocalMachine;
-                    RegistryKey deviceKey = hklm.OpenSubKey("SYSTEM\\CurrentControlSet\\Control\\Class\\" + audioGuidStr);
+                    RegistryKey deviceKey = hklm.OpenSubKey("SYSTEM\\CurrentControlSet\\Control\\Class\\" + searchVal.ToUpper());
                     string[] deviceSubKeys = deviceKey.GetSubKeyNames();
 
                     foreach (string deviceStr in deviceSubKeys)
                     {
-                        RegistryKey checkValKey = deviceKey.OpenSubKey(deviceStr);
-                        string checkVal = (string)checkValKey.GetValue("DriverDesc");
-                        if (checkVal.ToLower().Equals(searchVal.ToLower()))
+                        RegistryKey checkDeviceKey = deviceKey.OpenSubKey(deviceStr);
+                        RegistryKey settingsKey = checkDeviceKey.OpenSubKey("Settings");
+                        if (settingsKey != null)
                         {
-                            RegistryKey audioKey = checkValKey.OpenSubKey("Settings");
-                            if (audioKey != null)
+                            string driverDesc = (string)checkDeviceKey.GetValue("DriverDesc");
+
+                            RegistryValueKind regValKind = settingsKey.GetValueKind(registryKeyStr);  //try to find the ForceDisableJD key, if I find it, then this is the right device.
+                            if (regValKind == RegistryValueKind.Binary)
                             {
-                                RegistryValueKind regValKind = audioKey.GetValueKind(registryKeyStr);
-                                if (regValKind == RegistryValueKind.Binary)
+                                instancePathStr = findInstancePath(driverDesc);
+                                if (instancePathStr != null)
                                 {
-                                    instancePathStr = findInstancePath(searchVal);
-                                    if (instancePathStr != null)
-                                    {
-                                        registryPathStr = "SYSTEM\\CurrentControlSet\\Control\\Class\\" + audioGuidStr + "\\" + deviceStr + "\\Settings";
-                                        lblRegistryPath.Text = "HKLM\\" + registryPathStr + "\\" + registryKeyStr;
-                                        lblDeviceName.Text = searchVal;
-                                        bFound = true;
-                                        break;
-                                    }
+                                    registryPathStr = "SYSTEM\\CurrentControlSet\\Control\\Class\\" + searchVal + "\\" + deviceStr + "\\Settings";
+
+                                    audioGuidStr = searchVal;
+
+                                    lblRegistryPath.Text = "HKLM\\" + registryPathStr + "\\" + registryKeyStr;
+                                    lblDeviceName.Text = driverDesc;
+                                    lblDeviceGuid.Text = searchVal;
+                                    lblDeviceInstance.Text = instancePathStr;
+                                    bFound = true;
+                                    break;
                                 }
                             }
                         }
@@ -225,9 +227,6 @@ namespace AsusAudioHack
                 Console.Out.WriteLine(e.Message);
                //do nothing
             }
-
-            lblDeviceGuid.Text = audioGuidStr;
-            lblDeviceInstance.Text = instancePathStr;
 
             getCurrentAudioMode();
         }
